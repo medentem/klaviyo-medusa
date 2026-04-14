@@ -126,12 +126,12 @@ class KlaviyoService {
 
       // klaviyo-api: bulkSubscribeProfiles omits body assignment (unlike bulkImportProfiles).
       // Success still returns 200/202 with JSON in axios response.data.
-      const payload =
+      const resolvedBody =
         res.body !== undefined && res.body !== null
           ? res.body
           : res.response?.data;
 
-      return payload;
+      return resolvedBody;
     } catch (error) {
       if (
         error instanceof Error &&
