@@ -163,13 +163,24 @@ const handleCustomerConsentStep = createStep(
 
     try {
       const result = await klaviyoService.bulkSubscribeProfiles(payload);
+      let normalized: unknown = result;
+      if (typeof normalized === "string") {
+        const trimmed = normalized.trim();
+        if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+          try {
+            normalized = JSON.parse(trimmed) as unknown;
+          } catch {
+            /* keep string */
+          }
+        }
+      }
       const data =
-        result &&
-        typeof result === "object" &&
-        "data" in result &&
-        (result as { data?: unknown }).data &&
-        typeof (result as { data?: unknown }).data === "object"
-          ? ((result as { data: Record<string, unknown> }).data as Record<
+        normalized &&
+        typeof normalized === "object" &&
+        "data" in normalized &&
+        (normalized as { data?: unknown }).data &&
+        typeof (normalized as { data?: unknown }).data === "object"
+          ? ((normalized as { data: Record<string, unknown> }).data as Record<
               string,
               unknown
             >)
@@ -177,9 +188,11 @@ const handleCustomerConsentStep = createStep(
       trace("bulk_subscribe_ok", {
         profileId,
         result_type: result == null ? "null" : typeof result,
+        normalized_type:
+          normalized == null ? "null" : typeof normalized,
         result_keys:
-          result && typeof result === "object"
-            ? Object.keys(result as object)
+          normalized && typeof normalized === "object"
+            ? Object.keys(normalized as object)
             : [],
         bulk_job_id:
           data && typeof data.id === "string" ? data.id : undefined,
