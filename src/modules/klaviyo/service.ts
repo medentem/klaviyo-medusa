@@ -13,6 +13,50 @@ type ModuleOptions = {
   apiKey: string;
 };
 
+function formatKlaviyoClientError(error: unknown): string {
+  if (error == null) {
+    return "unknown error";
+  }
+  if (typeof error !== "object") {
+    return String(error);
+  }
+  const parts: string[] = [];
+  const e = error as Record<string, unknown> & {
+    message?: string;
+    response?: { status?: number; data?: unknown };
+    body?: unknown;
+  };
+  if (e.message) {
+    parts.push(String(e.message));
+  }
+  if (e.response) {
+    const st = e.response.status;
+    if (st != null) {
+      parts.push(`http_status=${st}`);
+    }
+    const data = e.response.data;
+    if (data !== undefined) {
+      try {
+        parts.push(
+          typeof data === "string" ? data : JSON.stringify(data)
+        );
+      } catch {
+        parts.push(String(data));
+      }
+    }
+  }
+  if (e.body !== undefined) {
+    try {
+      parts.push(
+        typeof e.body === "string" ? e.body : JSON.stringify(e.body)
+      );
+    } catch {
+      parts.push(String(e.body));
+    }
+  }
+  return parts.length > 0 ? parts.join(" | ") : String(error);
+}
+
 class KlaviyoService {
   private readonly apiKey: string;
   private readonly session: ApiKeySession;
@@ -74,13 +118,26 @@ class KlaviyoService {
         .bulkSubscribeProfiles(subscriptionJobPayload)
         .then((res) => res.body)
         .catch((error) => {
-          throw new Error("Error bulk subscribing profiles to Klaviyo");
+          const detail = formatKlaviyoClientError(error);
+          console.error("Klaviyo bulkSubscribeProfiles failed:", detail, error);
+          throw new Error(
+            `Error bulk subscribing profiles to Klaviyo: ${detail}`
+          );
         });
 
       return response;
     } catch (error) {
-      console.error("Error bulk subscribing profiles to Klaviyo");
-      throw error;
+      if (
+        error instanceof Error &&
+        error.message.startsWith("Error bulk subscribing profiles to Klaviyo:")
+      ) {
+        throw error;
+      }
+      const detail = formatKlaviyoClientError(error);
+      console.error("Klaviyo bulkSubscribeProfiles failed:", detail, error);
+      throw new Error(
+        `Error bulk subscribing profiles to Klaviyo: ${detail}`
+      );
     }
   }
 }
