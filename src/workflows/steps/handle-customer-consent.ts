@@ -84,11 +84,12 @@ const handleCustomerConsentStep = createStep(
     const hasSmsConsent = Boolean(consentData.sms);
     const hasTransactionalSmsConsent = Boolean(consentData.transactional_sms);
 
-    if (!hasEmailConsent && !hasSmsConsent) {
+    if (!hasEmailConsent && !hasSmsConsent && !hasTransactionalSmsConsent) {
       trace("early_exit", {
         reason: "no_channel_consent",
         hasEmailConsent,
         hasSmsConsent,
+        hasTransactionalSmsConsent,
       });
       return new StepResponse(
         "Customer has not provided consent for any channel",
@@ -137,6 +138,7 @@ const handleCustomerConsentStep = createStep(
         has_customer_phone: Boolean(customer.phone),
         hasEmailConsent,
         hasSmsConsent,
+        hasTransactionalSmsConsent,
       });
       return new StepResponse(
         "Customer has not provided consent for any channel",
@@ -199,10 +201,18 @@ const handleCustomerConsentStep = createStep(
         http_note:
           "Subscriptions are applied asynchronously; confirm in Klaviyo (Profiles / bulk jobs) if UI lags.",
       });
+      const parts: string[] = [];
+      if (hasEmailConsent) {
+        parts.push("email");
+      }
+      if (hasSmsConsent) {
+        parts.push("sms_marketing");
+      }
+      if (hasTransactionalSmsConsent) {
+        parts.push("sms_transactional");
+      }
       return new StepResponse(
-        `Customer ${customer.id} subscribed to Klaviyo channels: ${
-          hasEmailConsent ? "email " : ""
-        }${hasSmsConsent ? "sms" : ""}`,
+        `Customer ${customer.id} subscribed to Klaviyo channels: ${parts.join(", ") || "(none)"}`,
         result
       );
     } catch (error) {
