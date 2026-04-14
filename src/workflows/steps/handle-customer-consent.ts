@@ -163,13 +163,28 @@ const handleCustomerConsentStep = createStep(
 
     try {
       const result = await klaviyoService.bulkSubscribeProfiles(payload);
+      const data =
+        result &&
+        typeof result === "object" &&
+        "data" in result &&
+        (result as { data?: unknown }).data &&
+        typeof (result as { data?: unknown }).data === "object"
+          ? ((result as { data: Record<string, unknown> }).data as Record<
+              string,
+              unknown
+            >)
+          : null;
       trace("bulk_subscribe_ok", {
         profileId,
-        result_type: result ? typeof result : "null",
+        result_type: result == null ? "null" : typeof result,
         result_keys:
           result && typeof result === "object"
             ? Object.keys(result as object)
             : [],
+        bulk_job_id:
+          data && typeof data.id === "string" ? data.id : undefined,
+        http_note:
+          "Subscriptions are applied asynchronously; confirm in Klaviyo (Profiles / bulk jobs) if UI lags.",
       });
       return new StepResponse(
         `Customer ${customer.id} subscribed to Klaviyo channels: ${

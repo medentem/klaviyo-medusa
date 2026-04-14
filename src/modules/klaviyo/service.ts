@@ -114,9 +114,8 @@ class KlaviyoService {
         },
       };
 
-      const response = await profilesApi
+      const res = await profilesApi
         .bulkSubscribeProfiles(subscriptionJobPayload)
-        .then((res) => res.body)
         .catch((error) => {
           const detail = formatKlaviyoClientError(error);
           console.error("Klaviyo bulkSubscribeProfiles failed:", detail, error);
@@ -125,7 +124,14 @@ class KlaviyoService {
           );
         });
 
-      return response;
+      // klaviyo-api: bulkSubscribeProfiles omits body assignment (unlike bulkImportProfiles).
+      // Success still returns 200/202 with JSON in axios response.data.
+      const payload =
+        res.body !== undefined && res.body !== null
+          ? res.body
+          : res.response?.data;
+
+      return payload;
     } catch (error) {
       if (
         error instanceof Error &&
