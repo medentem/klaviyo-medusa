@@ -83,6 +83,8 @@ const handleCustomerConsentStep = createStep(
     const hasEmailConsent = Boolean(consentData.email);
     const hasSmsConsent = Boolean(consentData.sms);
     const hasTransactionalSmsConsent = Boolean(consentData.transactional_sms);
+    const trimmedPhone =
+      typeof customer.phone === "string" ? customer.phone.trim() : "";
 
     if (!hasEmailConsent && !hasSmsConsent && !hasTransactionalSmsConsent) {
       trace("early_exit", {
@@ -111,8 +113,7 @@ const handleCustomerConsentStep = createStep(
       };
     }
 
-    if (customer.phone) {
-      attributes.phoneNumber = customer.phone;
+    if (trimmedPhone) {
       if (hasTransactionalSmsConsent) {
         attributes.subscriptions.sms = {
           ...attributes.subscriptions.sms,
@@ -135,7 +136,7 @@ const handleCustomerConsentStep = createStep(
       trace("early_exit", {
         reason: "no_subscription_payload_after_build",
         has_customer_email: Boolean(customer.email),
-        has_customer_phone: Boolean(customer.phone),
+        has_customer_phone: Boolean(trimmedPhone),
         hasEmailConsent,
         hasSmsConsent,
         hasTransactionalSmsConsent,
@@ -144,6 +145,14 @@ const handleCustomerConsentStep = createStep(
         "Customer has not provided consent for any channel",
         null
       );
+    }
+
+    /**
+     * Klaviyo subscription bulk jobs can treat omitted profile fields as updates to the
+     * same profile id; include phone whenever we have it so email-only jobs do not strip SMS.
+     */
+    if (trimmedPhone) {
+      attributes.phoneNumber = trimmedPhone;
     }
 
     // Build the payload for bulk subscribe
