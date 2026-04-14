@@ -4,10 +4,6 @@
   "description": "A Klaviyo plugin for Medusa.",
   "author": "Variable Vic (https://variablevic.com)",
   "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/medentem/klaviyo-medusa.git"
-  },
   "files": [
     ".medusa/server"
   ],
