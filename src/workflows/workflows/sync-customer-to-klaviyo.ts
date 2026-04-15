@@ -8,6 +8,7 @@ import {
   ProfileCreateQueryResourceObjectAttributes,
   ProfileResponseObjectResource,
 } from "klaviyo-api";
+import { normalizeKlaviyoProfilePhoneNumber } from "../../lib/normalize-klaviyo-phone";
 import { handleCustomerConsentStep, syncCustomerProfileStep } from "../steps";
 
 type WorkflowInput = {
@@ -27,17 +28,23 @@ export const syncCustomerToKlaviyoWorkflow = createWorkflow(
     // Construct attributes for Klaviyo profile
     const attributes: ProfileCreateQueryResourceObjectAttributes = transform(
       customer,
-      (customer) => ({
-        email: customer.email,
-        firstName: customer.first_name,
-        lastName: customer.last_name,
-        phoneNumber: customer.phone,
-        externalId: customer.id,
-        properties: {
-          medusa_customer_id: customer.id,
-          created_at: customer.created_at,
-        },
-      })
+      (customer) => {
+        const raw =
+          typeof customer.phone === "string" && customer.phone.trim()
+            ? customer.phone
+            : "";
+        return {
+          email: customer.email,
+          firstName: customer.first_name,
+          lastName: customer.last_name,
+          ...(raw ? { phoneNumber: normalizeKlaviyoProfilePhoneNumber(raw) } : {}),
+          externalId: customer.id,
+          properties: {
+            medusa_customer_id: customer.id,
+            created_at: customer.created_at,
+          },
+        };
+      }
     );
 
     // Create or update profile in Klaviyo

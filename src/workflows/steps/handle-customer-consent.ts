@@ -10,6 +10,20 @@ import {
   SubscriptionChannels,
   SubscriptionParameters,
 } from "klaviyo-api";
+import { normalizeKlaviyoProfilePhoneNumber } from "../../lib/normalize-klaviyo-phone";
+
+/**
+ * Subscribes via Klaviyo **Bulk Subscribe Profiles** (`POST /api/profile-subscription-bulk-create-jobs`).
+ *
+ * @see https://developers.klaviyo.com/en/reference/bulk_subscribe_profiles
+ * @see https://developers.klaviyo.com/en/docs/collect_email_and_sms_consent_via_api
+ *
+ * OpenAPI `ProfileSubscriptionCreateQueryResourceObject.attributes`:
+ * - `subscriptions` is required (`SubscriptionChannels` with `email` / `sms` etc.).
+ * - `phone_number` on the wire must be E.164 and have no spaces when SMS consent is set;
+ *   we normalize whitespace only; E.164 is a store/data contract.
+ * - `klaviyo-api` expects JS `phoneNumber` on attributes (serializer maps to `phone_number`).
+ */
 
 type HandleCustomerConsentInput = {
   profileId: string;
@@ -84,7 +98,9 @@ const handleCustomerConsentStep = createStep(
     const hasSmsConsent = Boolean(consentData.sms);
     const hasTransactionalSmsConsent = Boolean(consentData.transactional_sms);
     const trimmedPhone =
-      typeof customer.phone === "string" ? customer.phone.trim() : "";
+      typeof customer.phone === "string" && customer.phone.trim()
+        ? normalizeKlaviyoProfilePhoneNumber(customer.phone)
+        : "";
 
     if (!hasEmailConsent && !hasSmsConsent && !hasTransactionalSmsConsent) {
       trace("early_exit", {
