@@ -10,6 +10,7 @@ import {
   SubscriptionChannels,
   SubscriptionParameters,
 } from "klaviyo-api";
+import { klaviyoSmsEnabledFromEnv } from "../../lib/klaviyo-sms-env";
 import { normalizeKlaviyoProfilePhoneNumber } from "../../lib/normalize-klaviyo-phone";
 
 /**
@@ -23,6 +24,9 @@ import { normalizeKlaviyoProfilePhoneNumber } from "../../lib/normalize-klaviyo-
  * - `phone_number` on the wire must be E.164 and have no spaces when SMS consent is set;
  *   we normalize whitespace only; E.164 is a store/data contract.
  * - `klaviyo-api` expects JS `phoneNumber` on attributes (serializer maps to `phone_number`).
+ *
+ * SMS channels (marketing + transactional) are skipped unless `KLAVIYO_SMS_ENABLED=true`
+ * on the Medusa process.
  */
 
 type HandleCustomerConsentInput = {
@@ -93,21 +97,24 @@ const handleCustomerConsentStep = createStep(
       return new StepResponse("Invalid Klaviyo consent data format", null);
     }
 
-    // Check if there's any consent set
+    const smsCapable = klaviyoSmsEnabledFromEnv();
     const hasEmailConsent = Boolean(consentData.email);
-    const hasSmsConsent = Boolean(consentData.sms);
-    const hasTransactionalSmsConsent = Boolean(consentData.transactional_sms);
+    const hasSmsConsentMeta = Boolean(consentData.sms);
+    const hasTransactionalSmsMeta = Boolean(consentData.transactional_sms);
+    const wantSmsMarketing = smsCapable && hasSmsConsentMeta;
+    const wantTransactionalSms = smsCapable && hasTransactionalSmsMeta;
     const trimmedPhone =
       typeof customer.phone === "string" && customer.phone.trim()
         ? normalizeKlaviyoProfilePhoneNumber(customer.phone)
         : "";
 
-    if (!hasEmailConsent && !hasSmsConsent && !hasTransactionalSmsConsent) {
+    if (!hasEmailConsent && !wantSmsMarketing && !wantTransactionalSms) {
       trace("early_exit", {
         reason: "no_channel_consent",
         hasEmailConsent,
-        hasSmsConsent,
-        hasTransactionalSmsConsent,
+        wantSmsMarketing,
+        wantTransactionalSms,
+        sms_capable: smsCapable,
       });
       return new StepResponse(
         "Customer has not provided consent for any channel",
@@ -130,7 +137,7 @@ const handleCustomerConsentStep = createStep(
     }
 
     if (trimmedPhone) {
-      if (hasTransactionalSmsConsent) {
+      if (wantTransactionalSms) {
         attributes.subscriptions.sms = {
           ...attributes.subscriptions.sms,
           transactional: {
@@ -138,7 +145,7 @@ const handleCustomerConsentStep = createStep(
           },
         };
       }
-      if (hasSmsConsent) {
+      if (wantSmsMarketing) {
         attributes.subscriptions.sms = {
           ...attributes.subscriptions.sms,
           marketing: {
@@ -154,8 +161,8 @@ const handleCustomerConsentStep = createStep(
         has_customer_email: Boolean(customer.email),
         has_customer_phone: Boolean(trimmedPhone),
         hasEmailConsent,
-        hasSmsConsent,
-        hasTransactionalSmsConsent,
+        wantSmsMarketing,
+        wantTransactionalSms,
       });
       return new StepResponse(
         "Customer has not provided consent for any channel",
@@ -164,10 +171,9 @@ const handleCustomerConsentStep = createStep(
     }
 
     /**
-     * Klaviyo subscription bulk jobs can treat omitted profile fields as updates to the
-     * same profile id; include phone whenever we have it so email-only jobs do not strip SMS.
+     * Include `phoneNumber` only when this job sets SMS subscriptions (Klaviyo consent API).
      */
-    if (trimmedPhone) {
+    if (trimmedPhone && attributes.subscriptions.sms) {
       attributes.phoneNumber = trimmedPhone;
     }
 
@@ -230,10 +236,10 @@ const handleCustomerConsentStep = createStep(
       if (hasEmailConsent) {
         parts.push("email");
       }
-      if (hasSmsConsent) {
+      if (wantSmsMarketing) {
         parts.push("sms_marketing");
       }
-      if (hasTransactionalSmsConsent) {
+      if (wantTransactionalSms) {
         parts.push("sms_transactional");
       }
       return new StepResponse(
