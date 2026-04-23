@@ -3,6 +3,7 @@
 .DS_Store
 /uploads
 /node_modules
+package-lock.json
 yarn-error.log
 
 .idea

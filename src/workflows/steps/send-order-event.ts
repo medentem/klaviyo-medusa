@@ -2,6 +2,10 @@ import { createStep, StepResponse } from "@medusajs/framework/workflows-sdk";
 import { IKlaviyoService, KLAVIYO_MODULE } from "../../types/klaviyo";
 import { v4 as uuidv4 } from "uuid";
 import { StoreOrder } from "@medusajs/types";
+import {
+  collectDiscountCodesForKlaviyo,
+  readCouponCampaignFieldsForKlaviyo,
+} from "./klaviyo-order-promo-fields";
 
 const sendOrderEventStep = createStep(
   "send-order-event",
@@ -18,6 +22,9 @@ const sendOrderEventStep = createStep(
       return new StepResponse("No customer email available", null);
     }
 
+    const discount_codes = collectDiscountCodesForKlaviyo(order);
+    const campaign = readCouponCampaignFieldsForKlaviyo(order);
+
     // Construct the event payload
     const eventPayload = {
       properties: {
@@ -28,6 +35,9 @@ const sendOrderEventStep = createStep(
         tax: order.tax_total,
         currency: order.currency_code,
         shipping: order.shipping_total,
+        discount_total: order.discount_total,
+        discount_codes,
+        ...campaign,
         items: (order.items || []).map((item) => ({
           id: item.variant_id,
           title: item.title,
