@@ -28,6 +28,10 @@ export default async function orderPlacedHandler({
         "metadata",
         "promotions.code",
         "promotions.metadata",
+        "promotions.campaign_id",
+        "promotions.campaign.id",
+        "promotions.campaign.campaign_identifier",
+        "promotions.campaign.name",
       ],
       filters: {
         id: orderId,

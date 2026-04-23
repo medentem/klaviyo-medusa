@@ -3,8 +3,8 @@ import { IKlaviyoService, KLAVIYO_MODULE } from "../../types/klaviyo";
 import { v4 as uuidv4 } from "uuid";
 import { StoreOrder } from "@medusajs/types";
 import {
+  buildOrderCampaignKlaviyoProperties,
   collectDiscountCodesForKlaviyo,
-  readCouponCampaignFieldsForKlaviyo,
 } from "./klaviyo-order-promo-fields";
 
 const sendOrderEventStep = createStep(
@@ -23,7 +23,7 @@ const sendOrderEventStep = createStep(
     }
 
     const discount_codes = collectDiscountCodesForKlaviyo(order);
-    const campaign = readCouponCampaignFieldsForKlaviyo(order);
+    const campaignProps = buildOrderCampaignKlaviyoProperties(order);
 
     // Construct the event payload
     const eventPayload = {
@@ -37,7 +37,7 @@ const sendOrderEventStep = createStep(
         shipping: order.shipping_total,
         discount_total: order.discount_total,
         discount_codes,
-        ...campaign,
+        ...campaignProps,
         items: (order.items || []).map((item) => ({
           id: item.variant_id,
           title: item.title,
