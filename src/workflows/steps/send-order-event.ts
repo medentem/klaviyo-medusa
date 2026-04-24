@@ -38,14 +38,28 @@ const sendOrderEventStep = createStep(
         discount_total: order.discount_total,
         discount_codes,
         ...campaignProps,
-        items: (order.items || []).map((item) => ({
-          id: item.variant_id,
-          title: item.title,
-          quantity: item.quantity,
-          price: item.unit_price,
-          product_id: item.product_id,
-          thumbnail: item.thumbnail,
-        })),
+        items: (order.items || []).map((item) => {
+          const meta = item.metadata as Record<string, unknown> | null | undefined;
+          const displayLines =
+            meta?.product_builder === true && Array.isArray(meta.display_lines)
+              ? (meta.display_lines as unknown[]).filter(
+                  (x): x is string => typeof x === "string" && x.trim().length > 0
+                )
+              : undefined;
+          return {
+            id: item.variant_id,
+            title: item.title,
+            quantity: item.quantity,
+            price: item.unit_price,
+            product_id: item.product_id,
+            thumbnail: item.thumbnail,
+            subtitle: item.subtitle ?? undefined,
+            options_summary:
+              displayLines && displayLines.length
+                ? displayLines.join(" · ")
+                : item.subtitle ?? undefined,
+          };
+        }),
       },
       metric: {
         data: {
