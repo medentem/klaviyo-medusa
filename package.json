@@ -25,8 +25,7 @@
   "scripts": {
     "build": "medusa plugin:build",
     "dev": "medusa plugin:develop",
-    "prepublishOnly": "medusa plugin:build",
-    "prepare": "medusa plugin:build"
+    "prepublishOnly": "medusa plugin:build"
   },
   "dependencies": {
     "klaviyo-api": "^21.0.1"

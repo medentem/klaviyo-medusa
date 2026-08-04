@@ -24,6 +24,8 @@ build
 !.yarn/sdks
 !.yarn/versions
 
-.medusa
+.medusa/*
+!.medusa/server/
+!.medusa/server/**
 
 .DS_Store
