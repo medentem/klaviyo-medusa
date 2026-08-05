@@ -23,7 +23,7 @@
     "klaviyo-medusa-plugin"
   ],
   "scripts": {
-    "build": "medusa plugin:build",
+    "plugin:build": "medusa plugin:build",
     "dev": "medusa plugin:develop",
     "prepublishOnly": "medusa plugin:build"
   },
