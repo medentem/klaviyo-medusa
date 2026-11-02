@@ -1,17 +1,19 @@
 import {
   type SubscriberArgs,
   type SubscriberConfig,
-} from "@medusajs/framework";
-import { syncCustomerToKlaviyoWorkflow } from "../workflows";
+} from "@medusajs/framework"
+import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
+import { syncCustomerToKlaviyoWorkflow } from "../workflows"
 
 export default async function customerCreatedHandler({
   event: { data },
   container,
 }: SubscriberArgs<{ id: string }>) {
-  const customerId = data.id;
+  const customerId = data.id
+  const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
 
   try {
-    const query = container.resolve("query");
+    const query = container.resolve(ContainerRegistrationKeys.QUERY)
     const {
       data: [customer],
     } = await query.graph({
@@ -24,23 +26,25 @@ export default async function customerCreatedHandler({
         take: 1,
         skip: 0,
       },
-    });
+    })
 
     if (!customer) {
-      console.error(`Customer ${customerId} not found`);
-      return;
+      logger.error(`Customer ${customerId} not found`)
+      return
     }
 
     await syncCustomerToKlaviyoWorkflow(container).run({
       input: {
         customer,
       },
-    });
+    })
   } catch (error) {
-    console.error(`Failed to sync customer ${customerId} to Klaviyo:`, error);
+    const message = error instanceof Error ? error.message : String(error)
+    logger.error(`Failed to sync customer ${customerId} to Klaviyo: ${message}`)
+    throw error
   }
 }
 
 export const config: SubscriberConfig = {
   event: ["customer.created", "customer.updated"],
-};
+}

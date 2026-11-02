@@ -1,30 +1,27 @@
 import {
   createWorkflow,
   WorkflowResponse,
-} from "@medusajs/framework/workflows-sdk";
-import { StoreOrder } from "@medusajs/types";
-import { sendOrderEventStep } from "../steps";
+} from "@medusajs/framework/workflows-sdk"
+import { loadOrderForKlaviyoStep, sendOrderEventStep } from "../steps"
 
 type WorkflowInput = {
-  order: StoreOrder;
-};
+  orderId: string
+}
 
 type WorkflowOutput = {
-  result: string;
-};
+  result: string
+}
 
 export const sendOrderToKlaviyoWorkflow = createWorkflow(
   "send-order-to-klaviyo",
   (input: WorkflowInput): WorkflowResponse<WorkflowOutput> => {
-    const { order } = input;
-
-    // Send order event to Klaviyo
-    const result = sendOrderEventStep(order);
+    const order = loadOrderForKlaviyoStep({ orderId: input.orderId })
+    const result = sendOrderEventStep(order)
 
     return new WorkflowResponse({
       result,
-    });
+    })
   }
-);
+)
 
-export default sendOrderToKlaviyoWorkflow;
+export default sendOrderToKlaviyoWorkflow

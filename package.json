@@ -24,6 +24,7 @@
   ],
   "scripts": {
     "plugin:build": "medusa plugin:build",
+    "test": "node --experimental-strip-types --test src/lib/klaviyo-order-query-fields.unit.spec.ts",
     "dev": "medusa plugin:develop",
     "prepublishOnly": "medusa plugin:build"
   },
