@@ -1,6 +1,11 @@
 import { createStep, StepResponse } from "@medusajs/framework/workflows-sdk"
 import type { StoreOrder } from "@medusajs/types"
 import { IKlaviyoService, KLAVIYO_MODULE } from "../../types/klaviyo"
+import {
+  lineQuantity,
+  orderGrandTotal,
+  plainAmount,
+} from "../../lib/klaviyo-order-amounts"
 import { klaviyoPlacedOrderUniqueId } from "../../lib/klaviyo-order-query-fields"
 import {
   buildOrderCampaignKlaviyoProperties,
@@ -40,49 +45,54 @@ const sendOrderEventStep = createStep(
     const discount_codes = collectDiscountCodesForKlaviyo(orderForPromos)
     const campaignProps = buildOrderCampaignKlaviyoProperties(orderForPromos)
     const uniqueId = klaviyoPlacedOrderUniqueId(order.id)
+    const items = (order.items || []).flatMap((item) => {
+      if (!item) {
+        return []
+      }
+      const meta = item.metadata as Record<string, unknown> | null | undefined
+      const displayLines =
+        meta?.product_builder === true && Array.isArray(meta.display_lines)
+          ? (meta.display_lines as unknown[]).filter(
+              (x): x is string => typeof x === "string" && x.trim().length > 0
+            )
+          : undefined
+      const quantity = lineQuantity(item)
+      const price =
+        plainAmount(item.raw_unit_price) || plainAmount(item.unit_price)
+      return [
+        {
+          id: item.variant_id,
+          title: item.title,
+          quantity,
+          price,
+          product_id: item.product_id,
+          thumbnail: item.thumbnail,
+          subtitle: item.subtitle ?? undefined,
+          options_summary:
+            displayLines && displayLines.length
+              ? displayLines.join(" · ")
+              : item.subtitle ?? undefined,
+        },
+      ]
+    })
+    const subtotalFromLines = items.reduce(
+      (sum, item) => sum + plainAmount(item.price) * plainAmount(item.quantity),
+      0
+    )
 
     const eventPayload = {
       properties: {
         orderId: order.id,
         orderNumber: order.display_id || order.id,
-        total: order.total,
-        subtotal: order.subtotal,
-        tax: order.tax_total,
+        total: orderGrandTotal(order),
+        subtotal: plainAmount(order.subtotal) || subtotalFromLines,
+        tax: plainAmount(order.tax_total),
         currency: order.currency_code,
-        shipping: order.shipping_total,
-        discount_total: order.discount_total,
+        shipping: plainAmount(order.shipping_total),
+        discount_total: plainAmount(order.discount_total),
         discount_codes,
         ...campaignProps,
-        items: (order.items || []).flatMap((item) => {
-          if (!item) {
-            return []
-          }
-          const meta = item.metadata as
-            | Record<string, unknown>
-            | null
-            | undefined
-          const displayLines =
-            meta?.product_builder === true && Array.isArray(meta.display_lines)
-              ? (meta.display_lines as unknown[]).filter(
-                  (x): x is string => typeof x === "string" && x.trim().length > 0
-                )
-              : undefined
-          return [
-            {
-              id: item.variant_id,
-              title: item.title,
-              quantity: item.quantity,
-              price: item.unit_price,
-              product_id: item.product_id,
-              thumbnail: item.thumbnail,
-              subtitle: item.subtitle ?? undefined,
-              options_summary:
-                displayLines && displayLines.length
-                  ? displayLines.join(" · ")
-                  : item.subtitle ?? undefined,
-            },
-          ]
-        }),
+        items,
       },
       metric: {
         data: {

@@ -12,6 +12,7 @@ export type KlaviyoOrderGraph = {
   tax_total?: unknown
   shipping_total?: unknown
   discount_total?: unknown
+  summary?: unknown
   metadata?: Record<string, unknown> | null
   customer?: { email?: string | null } | null
   items?: Array<Record<string, unknown> | null> | null
